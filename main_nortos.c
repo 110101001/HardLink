@@ -43,6 +43,7 @@
 /* Example/Board Header files */
 #include "Board.h"
 
+#include <stdio.h>
 extern void *mainThread(void *arg0);
 
 /*
@@ -50,7 +51,7 @@ extern void *mainThread(void *arg0);
  */
 int main(void)
 {
-    char a='A';
+    char a[]="Test";
     /* Call driver init functions */
     Board_initGeneral();
 
@@ -62,7 +63,7 @@ int main(void)
     HardLink_init();
     HardLink_setFrequency(915000000);
     while(1){
-        HardLink_send(&a,1);
+        HardLink_send(a,1);
         sleep(1);
     }
 

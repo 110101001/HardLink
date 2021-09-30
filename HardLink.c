@@ -4,6 +4,13 @@
              RF_EventCmdAborted | RF_EventCmdStopped | RF_EventCmdCancelled | \
              RF_EventCmdPreempted
 
+#define RF_convertUsToRatTicks(microseconds) \
+    ((uint32_t)(microseconds) * 4)
+
+// Convert milliseconds into RAT ticks.
+#define RF_convertMsToRatTicks(milliseconds) \
+    RF_convertUsToRatTicks((milliseconds) * 1000)
+
 #define ms_To_RadioTime(ms) (ms*(4000000/1000))
 #define bytes_per_raw_bit 64
 #define RF_TxPowerTable_INVALID_VALUE 0x3fffff
@@ -65,17 +72,41 @@ const RF_TxPowerTable_Entry PROP_RF_txPowerTable[] =
 
 const uint8_t PROP_RF_txPowerTableSize = sizeof(PROP_RF_txPowerTable)/sizeof(RF_TxPowerTable_Entry);
 
+rfc_CMD_PROP_TX_t RF_cmdTx[8];
 
 int HardLink_init(){
-
+    int i;
     RF_Params_init(&rfParams);
     //rfParams.nInactivityTimeout = ms_To_RadioTime(1);
 
     rfHandle = RF_open(&rfObject, &RF_prop,
                 &RF_cmdPropRadioDivSetup, &rfParams);
 
-    /*RF_runCmd(rfHandle, (RF_Op*)&RF_cmdFs, RF_PriorityNormal, 0,
-              HARD_LINK_CMD_MASK);*/
+    RF_runCmd(rfHandle, (RF_Op*)&RF_cmdFs, RF_PriorityNormal, 0,
+              HARD_LINK_CMD_MASK);
+
+
+    for(i=0;i<8;i++){
+                       RF_cmdTx[i].commandNo = 0x3801;
+                       RF_cmdTx[i].status = 0x0000;
+                       RF_cmdTx[i].pNextOp = 0; // INSERT APPLICABLE POINTER: (uint8_0x00000000t*)&xxx
+                       RF_cmdTx[i].startTime = RF_convertMsToRatTicks(8);
+                       RF_cmdTx[i].startTrigger.triggerType = TRIG_REL_PREVEND;
+                       RF_cmdTx[i].startTrigger.bEnaCmd = 0x0;
+                       RF_cmdTx[i].startTrigger.triggerNo = 0x0;
+                       RF_cmdTx[i].startTrigger.pastTrig = 0x0;
+                       RF_cmdTx[i].condition.rule = 0x0;
+                       RF_cmdTx[i].condition.nSkip = 0x0;
+                       RF_cmdTx[i].pktConf.bFsOff = 0x0;
+                       RF_cmdTx[i].pktConf.bUseCrc = 0x1;
+                       RF_cmdTx[i].pktConf.bVarLen = 0x1;
+                       RF_cmdTx[i].pktLen = bytes_per_raw_bit; // SET APPLICATION PAYLOAD LENGTH
+                       RF_cmdTx[i].syncWord = 0x930B51DE;
+                       RF_cmdTx[i].pPkt = 0;
+        if(i != 7){
+            RF_cmdTx[i].pNextOp=&RF_cmdTx[i+1];
+        }
+    }
 
     return 0;
 }
@@ -83,73 +114,23 @@ int HardLink_init(){
 int HardLink_send(uint8_t *packet,size_t size){
     //malloc has a risk of memory leaking
 
-
-    /*rfc_CMD_PROP_TX_t RF_cmdPropTx={
-        //CMD No, fixed for transmit
-        .commandNo = 0x3801,
-        .status = 0x0000,
-        .pNextOp = 0,
-        //immediate transmit
-        .startTime = 0x00000000,
-        .startTrigger.triggerType = TRIG_NOW,
-        .startTrigger.bEnaCmd = 0x0,
-        .startTrigger.triggerNo = 0x0,
-        .startTrigger.pastTrig = 0x0,
-        //No further commands, not apply
-        .condition.rule = 0x1,
-        .condition.nSkip = 0x0,
-        //keep synthesizer on after transmit
-        .pktConf.bFsOff = 0x0,
-        //Do CRC
-        .pktConf.bUseCrc = 0x1,
-        //Fix the length
-        .pktConf.bVarLen = 0x1,
-        //TODO figure out what this thing does
-        .syncWord = 0x930b51de
-
-        rfc_CMD_PROP_TX_t RF_cmdPropTx =
-{
-    .commandNo = 0x3801,
-    .status = 0x0000,
-    .pNextOp = 0, // INSERT APPLICABLE POINTER: (uint8_t*)&xxx
-    .startTime = 0x00000000,
-    .startTrigger.triggerType = 0x0,
-    .startTrigger.bEnaCmd = 0x0,
-    .startTrigger.triggerNo = 0x0,
-    .startTrigger.pastTrig = 0x0,
-    .condition.rule = 0x1,
-    .condition.nSkip = 0x0,
-    .pktConf.bFsOff = 0x0,
-    .pktConf.bUseCrc = 0x1,
-    .pktConf.bVarLen = 0x1,
-    .pktLen = 0x1E, // SET APPLICATION PAYLOAD LENGTH
-    .syncWord = 0x930B51DE,
-    .pPkt = 0, // INSERT APPLICABLE POINTER: (uint8_t*)&xxx
-};
-    };*/
-
     if(!packet){
         return -1;
     }
-
-    //TODO encode packet
-    RF_cmdPropTx.startTrigger.triggerType = TRIG_NOW;
-    RF_cmdPropTx.pktLen=bytes_per_raw_bit;
-
 
     size_t i;
     for(i=0; i<size;i++){
         uint8_t byte = packet[i];
         uint8_t digit;
         for(digit=0;digit<8;digit++){
-            if(byte & 1<<digit){
-                RF_cmdPropTx.pPkt = prs_1;
+            if(digit%2 ==0){
+                RF_cmdTx[digit].pPkt = prs_1;
             }
             else{
-                RF_cmdPropTx.pPkt = prs_0;
+                RF_cmdTx[digit].pPkt = prs_0;
             }
-            RF_EventMask terminationReason = RF_runCmd(rfHandle, (RF_Op*)&RF_cmdPropTx,RF_PriorityNormal, NULL, 0);
         }
+        RF_EventMask terminationReason = RF_runCmd(rfHandle, (RF_Op*)&RF_cmdTx[0],RF_PriorityNormal, NULL, 0);
     }
 
     return 0;

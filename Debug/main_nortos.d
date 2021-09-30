@@ -49,6 +49,8 @@ main_nortos.obj: /home/wpc/ti/simplelink_cc13x0_sdk_4_10_01_01/source/ti/devices
 main_nortos.obj: /home/wpc/ti/simplelink_cc13x0_sdk_4_10_01_01/source/ti/devices/cc13x0/driverlib/../driverlib/rom.h
 main_nortos.obj: /home/wpc/ti/simplelink_cc13x0_sdk_4_10_01_01/source/ti/devices/cc13x0/driverlib/gpio.h
 main_nortos.obj: /home/wpc/ti/simplelink_cc13x0_sdk_4_10_01_01/source/ti/devices/cc13x0/driverlib/../inc/hw_gpio.h
+main_nortos.obj: /home/wpc/UserSoftware/CCS/ccsv8/tools/compiler/ti-cgt-arm_20.2.5.LTS/include/stdio.h
+main_nortos.obj: /home/wpc/UserSoftware/CCS/ccsv8/tools/compiler/ti-cgt-arm_20.2.5.LTS/include/stdarg.h
 
 ../main_nortos.c: 
 /home/wpc/UserSoftware/CCS/ccsv8/tools/compiler/ti-cgt-arm_20.2.5.LTS/include/stdint.h: 
@@ -99,3 +101,5 @@ main_nortos.obj: /home/wpc/ti/simplelink_cc13x0_sdk_4_10_01_01/source/ti/devices
 /home/wpc/ti/simplelink_cc13x0_sdk_4_10_01_01/source/ti/devices/cc13x0/driverlib/../driverlib/rom.h: 
 /home/wpc/ti/simplelink_cc13x0_sdk_4_10_01_01/source/ti/devices/cc13x0/driverlib/gpio.h: 
 /home/wpc/ti/simplelink_cc13x0_sdk_4_10_01_01/source/ti/devices/cc13x0/driverlib/../inc/hw_gpio.h: 
+/home/wpc/UserSoftware/CCS/ccsv8/tools/compiler/ti-cgt-arm_20.2.5.LTS/include/stdio.h: 
+/home/wpc/UserSoftware/CCS/ccsv8/tools/compiler/ti-cgt-arm_20.2.5.LTS/include/stdarg.h: 
