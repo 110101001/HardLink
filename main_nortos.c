@@ -38,5 +38,4 @@ int main(void)
         sleep(1);
     }
 
-    while (1);
 }

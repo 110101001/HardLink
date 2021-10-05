@@ -82,10 +82,6 @@ int HardLink_init(){
     rfHandle = RF_open(&rfObject, &RF_prop,
                 &RF_cmdPropRadioDivSetup, &rfParams);
 
-    RF_runCmd(rfHandle, (RF_Op*)&RF_cmdFs, RF_PriorityNormal, 0,
-              HARD_LINK_CMD_MASK);
-
-
     for(i=0;i<8;i++){
                        RF_cmdTx[i].commandNo = 0x3801;
                        RF_cmdTx[i].status = 0x0000;
