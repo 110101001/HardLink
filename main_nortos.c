@@ -23,6 +23,7 @@ extern void *mainThread(void *arg0);
 int main(void)
 {
     char a[]="Test";
+    struct HardLink_packet p={a,1};
     /* Call driver init functions */
     Board_initGeneral();
 
@@ -34,7 +35,7 @@ int main(void)
     HardLink_init();
     HardLink_setFrequency(915000000);
     while(1){
-        HardLink_send(a,1);
+        HardLink_send(&p);
         sleep(1);
     }
 

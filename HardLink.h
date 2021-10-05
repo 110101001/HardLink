@@ -12,32 +12,33 @@
 //! \brief HardLink Status and error codes
 typedef enum
 {
-    HardLink_Status_Success         = 0, //!< Success
-    HardLink_Status_Config_Error    = 1, //!< Configuration error
-    HardLink_Status_Param_Error     = 2, //!< Param error
-    HardLink_Status_Mem_Error       = 3, //!< Memory Error
-    HardLink_Status_Cmd_Error       = 4, //!< Memory Error
-    HardLink_Status_Tx_Error        = 5, //!< Tx Error
-    HardLink_Status_Rx_Error        = 6, //!< Rx Error
-    HardLink_Status_Rx_Timeout      = 7, //!< Rx Error
-    HardLink_Status_Rx_Buffer_Error = 8, //!< Rx Buffer Error
-    HardLink_Status_Busy_Error      = 9, //!< Busy Error
-    HardLink_Status_Aborted         = 10 //!< Command stopped or aborted
-} HardLink_Status;
+    HardLink_status_Success         = 0, //!< Success
+    HardLink_status_Config_Error    = 1, //!< Configuration error
+    HardLink_status_Param_Error     = 2, //!< Param error
+    HardLink_status_Mem_Error       = 3, //!< Memory Error
+    HardLink_status_Cmd_Error       = 4, //!< Memory Error
+    HardLink_status_Tx_Error        = 5, //!< Tx Error
+    HardLink_status_Rx_Error        = 6, //!< Rx Error
+    HardLink_status_Rx_Timeout      = 7, //!< Rx Error
+    HardLink_status_Rx_Buffer_Error = 8, //!< Rx Buffer Error
+    HardLink_status_Busy_Error      = 9, //!< Busy Error
+    HardLink_status_Aborted         = 10 //!< Command stopped or aborted
+} HardLink_status;
 
 typedef struct HardLink_packet{
     uint8_t *payload;
     size_t size;
 }* HardLink_packet_t;
 
-typedef void (* HardLink_tx_cb)(HardLink_Status);
+typedef void (* HardLink_tx_cb)(HardLink_status);
 
 extern int HardLink_init();
-extern int HardLink_send(uint8_t *packet,size_t size);
-// extern int HardLink_sendAsync(HardLink_packet_t packet, );
+extern int HardLink_receive();
+extern int HardLink_send(HardLink_packet_t packet);
+extern int HardLink_sendAsync(HardLink_packet_t packet,HardLink_tx_cb cb);
 extern uint32_t HardLink_getFrequency(void);
-extern HardLink_Status HardLink_setFrequency(uint32_t ui32Frequency);
-extern HardLink_Status HardLink_getRfPower(int8_t *pi8TxPowerdBm);
-extern HardLink_Status HardLink_setRfPower(int8_t i8TxPowerdBm);
+extern HardLink_status HardLink_setFrequency(uint32_t ui32Frequency);
+extern HardLink_status HardLink_getRfPower(int8_t *pi8TxPowerdBm);
+extern HardLink_status HardLink_setRfPower(int8_t i8TxPowerdBm);
 
 #endif

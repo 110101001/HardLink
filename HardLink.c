@@ -1,9 +1,11 @@
 #include "HardLink.h"
 #include "RFQueue.h"
+#include <ti/drivers/rf/RF.h>
 #include <stdio.h>
-#define HARD_LINK_CMD_MASK RF_EventLastCmdDone | \
-             RF_EventCmdAborted | RF_EventCmdStopped | RF_EventCmdCancelled | \
-             RF_EventCmdPreempted
+
+#include DeviceFamily_constructPath(driverlib/rf_prop_mailbox.h)
+
+#include "Board.h"
 
 #define RF_convertUsToRatTicks(microseconds) \
     ((uint32_t)(microseconds) * 4)
@@ -23,6 +25,10 @@
 #define NUM_APPENDED_BYTES     2  // ???
 
 // RF related
+#define HARDLINK_RF_EVENT_MASK  ( RF_EventLastCmdDone | \
+             RF_EventCmdAborted | RF_EventCmdStopped | RF_EventCmdCancelled | \
+             RF_EventCmdPreempted )
+
 static RF_Object rfObject;
 static RF_Handle rfHandle;
 static RF_Params rfParams;
@@ -37,6 +43,13 @@ static uint8_t configured = 1;
 //Indicating that the API suspended
 static uint8_t suspended = 0;
 
+// local commands, contents will be defined by modulation type
+static rfc_CMD_FS_t HardLink_cmdFs;
+/*
+static Semaphore_Struct RF_Busy;
+static Semaphore_Handle RF_Busy_Handle;
+*/
+HardLink_tx_cb sendAsync_cb;
 
 unsigned char prs_0[64] = {
   0b00000001, 0b01011110, 0b11010100, 0b01100001, 0b00001011, 0b11110011, 0b00110001, 0b01011100,
@@ -83,18 +96,23 @@ const RF_TxPowerTable_Entry PROP_RF_txPowerTable[] =
 
 const uint8_t PROP_RF_txPowerTableSize = sizeof(PROP_RF_txPowerTable)/sizeof(RF_TxPowerTable_Entry);
 
-rfc_CMD_PROP_TX_t RF_cmdTx[8];
+rfc_CMD_PROP_TX_t RF_cmdTx[100];
 
 int HardLink_init(){
-    /* TX initial part */
-    int i;
+    uint16_t i;
+/*
+    Semaphore_construct(&RF_Busy, 1, &semparams);
+    RF_Busy_Handle = Semaphore_handle(&RF_Busy);*/
+    //Set tx call back to NULL
+    sendAsync_cb = NULL;
+
     RF_Params_init(&rfParams);
     //rfParams.nInactivityTimeout = ms_To_RadioTime(1);
 
     rfHandle = RF_open(&rfObject, &RF_prop,
                 &RF_cmdPropRadioDivSetup, &rfParams);
 
-    for(i=0;i<8;i++){
+    for(i=0;i<100;i++){
                        RF_cmdTx[i].commandNo = 0x3801;
                        RF_cmdTx[i].status = 0x0000;
                        RF_cmdTx[i].pNextOp = 0; // INSERT APPLICABLE POINTER: (uint8_0x00000000t*)&xxx
@@ -111,9 +129,6 @@ int HardLink_init(){
                        RF_cmdTx[i].pktLen = bytes_per_raw_bit; // SET APPLICATION PAYLOAD LENGTH
                        RF_cmdTx[i].syncWord = 0x930B51DE;
                        RF_cmdTx[i].pPkt = 0;
-        if(i != 7){
-            RF_cmdTx[i].pNextOp=&RF_cmdTx[i+1];
-        }
     }
 
     /* RX initial part*/
@@ -178,25 +193,56 @@ void callback(RF_Handle h, RF_CmdHandle ch, RF_EventMask e)
 int HardLink_send(uint8_t *packet,size_t size){
     //malloc has a risk of memory leaking
 
-    if(!packet){
+    if(!packet || !packet->payload){
         return -1;
     }
 
     size_t i;
-    for(i=0; i<size;i++){
-        uint8_t byte = packet[i];
+    for(i=0; i<packet->size;i++){
+        uint8_t byte = packet->payload[i];
         uint8_t digit;
         for(digit=0;digit<8;digit++){
-            if(digit%2 ==0){
-                RF_cmdTx[digit].pPkt = prs_1;
+            if(byte & 1 << digit){
+                RF_cmdTx[8*i+digit].pPkt = prs_1;
             }
             else{
-                RF_cmdTx[digit].pPkt = prs_0;
+                RF_cmdTx[8*i+digit].pPkt = prs_0;
             }
+            RF_cmdTx[8*i+digit].pNextOp=&RF_cmdTx[8*i+digit+1];
         }
-        RF_EventMask terminationReason = RF_runCmd(rfHandle, (RF_Op*)&RF_cmdTx[0],RF_PriorityNormal, NULL, 0);
+    }
+    RF_cmdTx[8*i+7].pNextOp=0;
+    //Semaphore_pend(RF_Busy_Handle);
+    RF_EventMask terminationReason = RF_postCmd(rfHandle, (RF_Op*)&RF_cmdTx[0],RF_PriorityNormal, NULL, HARDLINK_RF_EVENT_MASK);
+
+    return 0;
+}
+
+int HardLink_send(HardLink_packet_t packet){
+    //malloc has a risk of memory leaking
+
+    if(!packet || !packet->payload){
+        return -1;
     }
 
+    size_t i;
+    for(i=0; i<packet->size;i++){
+        uint8_t byte = packet->payload[i];
+        uint8_t digit;
+        for(digit=0;digit<8;digit++){
+            if(byte & 1 << digit){
+                RF_cmdTx[8*i+digit].pPkt = prs_1;
+            }
+            else{
+                RF_cmdTx[8*i+digit].pPkt = prs_0;
+            }
+            RF_cmdTx[8*i+digit].pNextOp=&RF_cmdTx[8*i+digit+1];
+        }
+    }
+    RF_cmdTx[8*i+7].pNextOp=0;
+    //Semaphore_pend(RF_Busy_Handle);
+    RF_EventMask terminationReason = RF_runCmd(rfHandle, (RF_Op*)&RF_cmdTx[0],RF_PriorityNormal, NULL, 0);
+    //Semaphore_post(RF_Busy_Handle);
     return 0;
 }
 
@@ -205,7 +251,7 @@ uint32_t HardLink_getFrequency(void)
     uint32_t freq_khz;
     if((!configured) || suspended)
     {
-        return HardLink_Status_Config_Error;
+        return HardLink_status_Config_Error;
     }
 
     freq_khz = RF_cmdFs.frequency * 1000000;
@@ -215,14 +261,14 @@ uint32_t HardLink_getFrequency(void)
     return freq_khz;
 }
 
-HardLink_Status HardLink_setFrequency(uint32_t ui32Frequency)
+HardLink_status HardLink_setFrequency(uint32_t ui32Frequency)
 {
-    HardLink_Status  status= HardLink_Status_Cmd_Error;
+    HardLink_status  status= HardLink_status_Cmd_Error;
     uint16_t centerFreq, fractFreq;
 
     if((!configured) || suspended)
     {
-        return HardLink_Status_Config_Error;
+        return HardLink_status_Config_Error;
     }
 
     // set the frequency
@@ -245,18 +291,18 @@ HardLink_Status HardLink_setFrequency(uint32_t ui32Frequency)
     // check status 
     if((result & RF_EventLastCmdDone) && (RF_cmdFs.status == DONE_OK))
     {
-        status = HardLink_Status_Success;
+        status = HardLink_status_Success;
     }
     return status;
 }
 
-HardLink_Status HardLink_getRfPower(int8_t *pi8TxPowerdBm)
+HardLink_status HardLink_getRfPower(int8_t *pi8TxPowerdBm)
 {
     // set a initial value
     int8_t txPowerdBm = 0xff;
     if((!configured) || suspended)
     {
-        return HardLink_Status_Config_Error;
+        return HardLink_status_Config_Error;
     }
 
     uint8_t rfPowerTableSize = 0;
@@ -266,7 +312,7 @@ HardLink_Status HardLink_getRfPower(int8_t *pi8TxPowerdBm)
     // value not valid
     if(currValue.rawValue == RF_TxPowerTable_INVALID_VALUE)
     {
-        return HardLink_Status_Config_Error;
+        return HardLink_status_Config_Error;
     }
     else
     {
@@ -280,16 +326,16 @@ HardLink_Status HardLink_getRfPower(int8_t *pi8TxPowerdBm)
     }
 
     *pi8TxPowerdBm = txPowerdBm;
-    return HardLink_Status_Success;
+    return HardLink_status_Success;
 }
 
-HardLink_Status HardLink_setRfPower(int8_t i8TxPowerdBm)
+HardLink_status HardLink_setRfPower(int8_t i8TxPowerdBm)
 {
-    HardLink_Status status = HardLink_Status_Cmd_Error;
+    HardLink_status status = HardLink_status_Cmd_Error;
 
     if((!configured) || suspended)
     {
-        return HardLink_Status_Config_Error;
+        return HardLink_status_Config_Error;
     }
 
     RF_TxPowerTable_Value newValue;
@@ -299,17 +345,17 @@ HardLink_Status HardLink_setRfPower(int8_t i8TxPowerdBm)
     // didn't found a valid value
     if(newValue.rawValue == RF_TxPowerTable_INVALID_VALUE)
     {
-        return HardLink_Status_Config_Error;
+        return HardLink_status_Config_Error;
     }
 
     RF_Stat rfStatus = RF_setTxPower(rfHandle, newValue);
     if(rfStatus == RF_StatSuccess)
     {
-        status = HardLink_Status_Success;
+        status = HardLink_status_Success;
     }
     else 
     {
-        status = HardLink_Status_Config_Error;
+        status = HardLink_status_Config_Error;
     }
     return status;
 }
