@@ -2,7 +2,7 @@
 # Automatically-generated file. Do not edit!
 ################################################################################
 
-CG_TOOL_ROOT := /home/wpc/UserSoftware/CCS/ccsv8/tools/compiler/ti-cgt-arm_20.2.5.LTS
+CG_TOOL_ROOT := /home/phoenix/ti/ccsv8/tools/compiler/ti-cgt-arm_20.2.5.LTS
 
 GEN_OPTS__FLAG := 
 GEN_CMDS__FLAG := 
@@ -153,14 +153,14 @@ all: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 rfPacketTx_CC1310_LAUNCHXL_nortos_ccs.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: "$@"'
 	@echo 'Invoking: ARM Linker'
-	"/home/wpc/UserSoftware/CCS/ccsv8/tools/compiler/ti-cgt-arm_20.2.5.LTS/bin/armcl" -mv7M3 --code_state=16 --float_support=vfplib -me --define=DeviceFamily_CC13X0 --define=CCFG_FORCE_VDDR_HH=0 --define=SUPPORT_PHY_CUSTOM --define=SUPPORT_PHY_50KBPS2GFSK --define=SUPPORT_PHY_625BPSLRM --define=SUPPORT_PHY_5KBPSSLLR -g --diag_warning=225 --diag_warning=255 --diag_wrap=off --display_error_number --gen_func_subsections=on -z -m"rfPacketTx_CC1310_LAUNCHXL_nortos_ccs.map" -i"/home/wpc/ti/simplelink_cc13x0_sdk_4_10_01_01/source" -i"/home/wpc/ti/simplelink_cc13x0_sdk_4_10_01_01/kernel/nortos" -i"/home/wpc/UserSoftware/CCS/ccsv8/tools/compiler/ti-cgt-arm_20.2.5.LTS/lib" --diag_wrap=off --display_error_number --warn_sections --xml_link_info="rfPacketTx_CC1310_LAUNCHXL_nortos_ccs_linkInfo.xml" --rom_model -o "rfPacketTx_CC1310_LAUNCHXL_nortos_ccs.out" $(ORDERED_OBJS)
+	"/home/phoenix/ti/ccsv8/tools/compiler/ti-cgt-arm_20.2.5.LTS/bin/armcl" -mv7M3 --code_state=16 --float_support=vfplib -me --define=DeviceFamily_CC13X0 --define=CCFG_FORCE_VDDR_HH=0 --define=SUPPORT_PHY_CUSTOM --define=SUPPORT_PHY_50KBPS2GFSK --define=SUPPORT_PHY_625BPSLRM --define=SUPPORT_PHY_5KBPSSLLR -g --diag_warning=225 --diag_warning=255 --diag_wrap=off --display_error_number --gen_func_subsections=on -z -m"rfPacketTx_CC1310_LAUNCHXL_nortos_ccs.map" -i"/home/phoenix/ti/simplelink_cc13x0_sdk_4_10_01_01/source" -i"/home/phoenix/ti/simplelink_cc13x0_sdk_4_10_01_01/kernel/nortos" -i"/home/phoenix/ti/ccsv8/tools/compiler/ti-cgt-arm_20.2.5.LTS/lib" --diag_wrap=off --display_error_number --warn_sections --xml_link_info="rfPacketTx_CC1310_LAUNCHXL_nortos_ccs_linkInfo.xml" --rom_model -o "rfPacketTx_CC1310_LAUNCHXL_nortos_ccs.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: "$@"'
 	@echo ' '
 
 rfPacketTx_CC1310_LAUNCHXL_nortos_ccs.hex: $(EXE_OUTPUTS)
 	@echo 'Building files: $(strip $(EXE_OUTPUTS__QUOTED))'
 	@echo 'Invoking: ARM Hex Utility'
-	"/home/wpc/UserSoftware/CCS/ccsv8/tools/compiler/ti-cgt-arm_20.2.5.LTS/bin/armhex"  -o "rfPacketTx_CC1310_LAUNCHXL_nortos_ccs.hex" $(EXE_OUTPUTS__QUOTED)
+	"/home/phoenix/ti/ccsv8/tools/compiler/ti-cgt-arm_20.2.5.LTS/bin/armhex"  -o "rfPacketTx_CC1310_LAUNCHXL_nortos_ccs.hex" $(EXE_OUTPUTS__QUOTED)
 	@echo 'Finished building: $(strip $(EXE_OUTPUTS__QUOTED))'
 	@echo ' '
 
