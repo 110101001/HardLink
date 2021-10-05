@@ -20,11 +20,11 @@ static RF_Handle rfHandle;
 static RF_Params rfParams;
 
 //Indicating that the API is initialized
-static uint8_t configured = 0;
+static uint8_t configured = 1;
 //Indicating that the API suspended
 static uint8_t suspended = 0;
 // local commands, contents will be defined by modulation type
-static rfc_CMD_FS_t HardLink_cmdFs;
+// static rfc_CMD_FS_t RF_cmdFs;
 
 
 unsigned char prs_0[64] = {
@@ -144,9 +144,9 @@ uint32_t HardLink_getFrequency(void)
         return HardLink_Status_Config_Error;
     }
 
-    freq_khz = HardLink_cmdFs.frequency * 1000000;
+    freq_khz = RF_cmdFs.frequency * 1000000;
     // recover the fractional part, see setFrequency for definition
-    freq_khz += (((uint64_t)HardLink_cmdFs.fractFreq * 1000000) / 65536);
+    freq_khz += (((uint64_t)RF_cmdFs.fractFreq * 1000000) / 65536);
 
     return freq_khz;
 }
@@ -171,15 +171,15 @@ HardLink_Status HardLink_setFrequency(uint32_t ui32Frequency)
                             ((uint64_t)centerFreq * 1000000)) *
                             65536 / 1000000);
 
-    HardLink_cmdFs.frequency = centerFreq;
-    HardLink_cmdFs.fractFreq = fractFreq;
+    RF_cmdFs.frequency = centerFreq;
+    RF_cmdFs.fractFreq = fractFreq;
 
     // run command to set the frequency, returns RF_EventMask(termination reason)
-    RF_EventMask result = RF_runCmd(rfHandle, (RF_Op*)&HardLink_cmdFs,
+    RF_EventMask result = RF_runCmd(rfHandle, (RF_Op*)&RF_cmdFs,
                 RF_PriorityNormal, 0, HARD_LINK_CMD_MASK);
 
     // check status 
-    if((result & RF_EventLastCmdDone) && (HardLink_cmdFs.status == DONE_OK))
+    if((result & RF_EventLastCmdDone) && (RF_cmdFs.status == DONE_OK))
     {
         status = HardLink_Status_Success;
     }
