@@ -1,4 +1,5 @@
 #include "HardLink.h"
+#include "RFQueue.h"
 #include <stdio.h>
 #define HARD_LINK_CMD_MASK RF_EventLastCmdDone | \
              RF_EventCmdAborted | RF_EventCmdStopped | RF_EventCmdCancelled | \
@@ -15,16 +16,26 @@
 #define bytes_per_raw_bit 64
 #define RF_TxPowerTable_INVALID_VALUE 0x3fffff
 
+/* Packet RX Configuration*/
+#define DATA_ENTRY_HEADER_SIZE 8  // Constant header size of a generic data entry
+#define MAX_LENGTH             30 // Max length byte the radio will accept
+#define NUM_DATA_ENTRIES       2  // only two ????
+#define NUM_APPENDED_BYTES     2  // ???
+
+// RF related
 static RF_Object rfObject;
 static RF_Handle rfHandle;
 static RF_Params rfParams;
+
+/* Receive dataQueue for RF core to fill in data */
+static dataQueue_t dataQueue;
+static rfc_dataEntry;
+static uint8_t rxDataEntryBuffer()
 
 //Indicating that the API is initialized
 static uint8_t configured = 1;
 //Indicating that the API suspended
 static uint8_t suspended = 0;
-// local commands, contents will be defined by modulation type
-// static rfc_CMD_FS_t RF_cmdFs;
 
 
 unsigned char prs_0[64] = {
@@ -75,6 +86,7 @@ const uint8_t PROP_RF_txPowerTableSize = sizeof(PROP_RF_txPowerTable)/sizeof(RF_
 rfc_CMD_PROP_TX_t RF_cmdTx[8];
 
 int HardLink_init(){
+    /* TX initial part */
     int i;
     RF_Params_init(&rfParams);
     //rfParams.nInactivityTimeout = ms_To_RadioTime(1);
@@ -104,7 +116,63 @@ int HardLink_init(){
         }
     }
 
+    /* RX initial part*/
+    // initialize data queue including the first data entry
+    if(RFQueue_defineQueue(&dataQueue, 
+                           rfDataEntryBuffer,
+                           sizeof(rfDataEntryBuffer),
+                           NUM_DATA_ENTRIES, 
+                           MAX_LENGTH + NUM_APPENDED_BYTES))
+    {
+        // failed to allocate space for all data entries
+        while(1);
+    }
+
+    /* Modify CMD_PROP_RX command for applications needs */
+    // Set the data entry queue for received data
+    RF_cmdPropTx.pQueue = &dataQueue;
+    // Discard ignored packets from Rx queue
+    RF_cmdPropTx.rxConf.bAutoFlushIgnored = 1;
+    // Discard packets with CRC error from RX queue
+    RF_cmdPropTx.rxConf.bAutoFlushCrcErr = 1;
+    // Implement packet length filtering to avoid 
+    RF_cmdPropTx.maxPktLen = MAX_LENGTH;
+    // go back to sync research 
+    RF_cmdPropTx.pktConf.bRepeatOk = 1;
+    RF_cmdPropTx.pktConf.bRepeatNok = 1;
+
     return 0;
+}
+
+int HardLink_receive()
+{
+    RF_EventMask terminationReason = RF_runCmd(rfHandle, (RF_Op*)&RF_cmdPropTx,
+                                               RF_PriorityNormal, &callback,
+                                               RF_EventRxEntryDone);
+    while(1);
+    return 0;
+}
+
+void callback(RF_Handle h, RF_CmdHandle ch, RF_EventMask e)
+{
+    // if state of RX data entry is finished
+    if(e & RF_EventRxEntryDone)
+    {
+        // get current unhandled data entry
+        currentDataEntry = RFQueue_getDataEntry();
+        
+        /* Handle the packet data, located at &currentDataEntry->data:
+         * - Length is the first byte with the current configuration
+         * - Data starts from the second byte */    
+        packetLength      = *(uint8_t*)(&currentDataEntry->data);
+        packetDataPointer = (uint8_t*)(&currentDataEntry->data + 1);
+
+        /* Copy the payload + the status byte to the packet variable */
+        memcpy(packet, packetDataPointer, (packetLength + 1));
+
+        RFQueue_nextEntry();
+    }
+    return;
 }
 
 int HardLink_send(uint8_t *packet,size_t size){
